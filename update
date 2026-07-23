@@ -1,0 +1,747 @@
+import React, { useState } from "react";
+import {
+  Scale,
+  FileCheck2,
+  FileClock,
+  FileX,
+  HelpCircle,
+  ArrowRight,
+  ArrowLeft,
+  RotateCcw,
+  Menu,
+  X,
+} from "lucide-react";
+
+/* ---------------------------------------------------------------
+   Design tokens
+--------------------------------------------------------------- */
+const T = {
+  paper: "#F5F1E7",
+  paperLine: "#DED2B0",
+  ink: "#1B2A44",
+  inkSoft: "#5B6478",
+  teal: "#0E6F6A",
+  tealSoft: "#E4F0EE",
+  gold: "#AD7F26",
+  goldSoft: "#F3E9D2",
+  rust: "#8C3F32",
+  rustSoft: "#F1E2DC",
+  card: "#FFFFFF",
+};
+
+const GlobalStyle = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+
+    .cpp-shell { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+    .cpp-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 28px; align-items: start; }
+    .cpp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .cpp-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .cpp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .cpp-nav-links { display: flex; gap: 28px; align-items: center; }
+    .cpp-mobile-toggle { display: none; }
+
+    @media (max-width: 760px) {
+      .cpp-grid { grid-template-columns: 1fr; }
+      .cpp-stats { grid-template-columns: 1fr; }
+      .cpp-pillars { grid-template-columns: 1fr; }
+      .cpp-two-col { grid-template-columns: 1fr; }
+      .cpp-nav-links { display: none; }
+      .cpp-nav-links.open { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+      .cpp-mobile-toggle { display: inline-flex; }
+    }
+
+    .cpp-option {
+      width: 100%; text-align: left; border: 1px solid ${T.paperLine};
+      background: #FFFFFF; border-radius: 2px; padding: 14px 16px; cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+      display: block; font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .cpp-option:hover { border-color: ${T.teal}; background: ${T.tealSoft}; }
+    .cpp-option:focus-visible { outline: 2px solid ${T.teal}; outline-offset: 2px; }
+    .cpp-option:active { transform: translateY(1px); }
+
+    .cpp-btn {
+      font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px;
+      border-radius: 2px; padding: 10px 18px; cursor: pointer; display: inline-flex;
+      align-items: center; gap: 8px; border: 1px solid transparent; transition: opacity 120ms ease;
+    }
+    .cpp-btn:hover { opacity: 0.88; }
+    .cpp-btn:focus-visible { outline: 2px solid ${T.ink}; outline-offset: 2px; }
+    .cpp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .cpp-navlink {
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 600;
+      background: none; border: none; cursor: pointer; padding: 6px 0; color: ${T.inkSoft};
+    }
+    .cpp-navlink.active { color: ${T.teal}; }
+    .cpp-navlink:focus-visible { outline: 2px solid ${T.teal}; outline-offset: 3px; }
+
+    @keyframes stampIn {
+      0% { opacity: 0; transform: scale(2.2) rotate(-14deg); }
+      55% { opacity: 1; transform: scale(0.92) rotate(-7deg); }
+      100% { opacity: 1; transform: scale(1) rotate(-7deg); }
+    }
+    @keyframes riseIn {
+      0% { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .cpp-stamp { animation: stampIn 480ms cubic-bezier(.2,.8,.3,1.1) both; }
+    .cpp-rise { animation: riseIn 420ms ease both; }
+    @media (prefers-reduced-motion: reduce) { .cpp-stamp, .cpp-rise { animation: none; } }
+  `}</style>
+);
+
+const cardBase = { background: T.card, border: `1px solid ${T.paperLine}`, borderRadius: 3 };
+
+/* ---------------------------------------------------------------
+   Shared bits
+--------------------------------------------------------------- */
+function Eyebrow({ children }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 12,
+        letterSpacing: "0.06em",
+        color: T.teal,
+        marginBottom: 14,
+      }}
+    >
+      <Scale size={14} strokeWidth={2} />
+      {children}
+    </div>
+  );
+}
+
+function NavBar({ page, setPage }) {
+  const [open, setOpen] = useState(false);
+  const links = [
+    ["home", "Home"],
+    ["about", "Who we are"],
+    ["impact", "Impact"],
+    ["checker", "Check eligibility"],
+  ];
+  return (
+    <div style={{ borderBottom: `1px solid ${T.paperLine}`, background: T.paper }}>
+      <div
+        className="cpp-shell"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px" }}
+      >
+        <button
+          className="cpp-navlink"
+          style={{ display: "flex", alignItems: "center", gap: 8, color: T.ink, fontSize: 15 }}
+          onClick={() => setPage("home")}
+        >
+          <Scale size={18} strokeWidth={2} color={T.teal} />
+          <span style={{ fontFamily: "'Lora', serif", fontWeight: 600 }}>ClearPath Justice</span>
+        </button>
+
+        <div className={`cpp-nav-links${open ? " open" : ""}`}>
+          {links.map(([id, label]) => (
+            <button
+              key={id}
+              className={`cpp-navlink${page === id ? " active" : ""}`}
+              onClick={() => {
+                setPage(id);
+                setOpen(false);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="cpp-mobile-toggle cpp-btn"
+          style={{ background: "transparent", color: T.ink, border: `1px solid ${T.paperLine}`, padding: 8 }}
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          {open ? <X size={18} /> : <Menu size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <div className="cpp-shell" style={{ padding: "40px 24px 56px" }}>
+      <p style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.6, maxWidth: 640 }}>
+        ClearPath Justice provides general information based on the Cannabis for Private Purposes
+        Act 7 of 2024. It isn't legal advice — for a decision about your own record, consult a
+        community advice office, Legal Aid SA, or an attorney.
+      </p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   HOME PAGE
+--------------------------------------------------------------- */
+function HomePage({ setPage }) {
+  return (
+    <div className="cpp-shell cpp-rise" style={{ padding: "56px 24px 20px" }}>
+      <Eyebrow>CANNABIS FOR PRIVATE PURPOSES ACT 7 OF 2024 &middot; SECTION 5</Eyebrow>
+      <h1
+        style={{
+          fontFamily: "'Lora', serif",
+          fontWeight: 600,
+          fontSize: "clamp(32px, 5vw, 46px)",
+          lineHeight: 1.12,
+          margin: "0 0 16px",
+          color: T.ink,
+          maxWidth: 680,
+        }}
+      >
+        A conviction shouldn't outlast the law.
+      </h1>
+      <p style={{ color: T.inkSoft, fontSize: 16, maxWidth: 560, lineHeight: 1.65, margin: "0 0 28px" }}>
+        Cannabis use and possession haven't been a crime in South Africa since 2018. Yet the
+        records of everyone convicted before then still sit on file — shaping background checks,
+        job offers, and travel. The CPPA says many of those records must be cleared automatically.
+        ClearPath Justice exists to make sure that actually happens.
+      </p>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 48 }}>
+        <button className="cpp-btn" style={{ background: T.ink, color: "#fff" }} onClick={() => setPage("checker")}>
+          Check your eligibility <ArrowRight size={14} />
+        </button>
+        <button
+          className="cpp-btn"
+          style={{ background: "transparent", color: T.ink, border: `1px solid ${T.paperLine}` }}
+          onClick={() => setPage("about")}
+        >
+          Who we are
+        </button>
+      </div>
+
+      {/* Quick facts */}
+      <div className="cpp-stats" style={{ marginBottom: 48 }}>
+        <StatCard value="~250,000" label="average cannabis-related arrests per year, 2013–2017" source="Constitutional Court papers, Prince v Minister of Justice" />
+        <StatCard value="32.7%" label="South Africa's unemployment rate, Q1 2026" source="Stats SA, Quarterly Labour Force Survey" />
+        <StatCard value="s.5" label="the section of the CPPA that governs expungement" source="Cannabis for Private Purposes Act 7 of 2024" />
+      </div>
+
+      {/* How it works teaser */}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Lora', serif", fontSize: 22, fontWeight: 600, color: T.ink, margin: "0 0 16px" }}>
+          Two routes, one section of law
+        </h2>
+        <div className="cpp-two-col">
+          <div style={{ ...cardBase, padding: 22, borderLeft: `3px solid ${T.teal}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <FileCheck2 size={16} color={T.teal} />
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: T.teal }}>s.5(1) &middot; AUTOMATIC</span>
+            </div>
+            <p style={{ fontSize: 14, color: T.ink, lineHeight: 1.6, margin: 0 }}>
+              Use or possession convictions must be expunged by the SAPS Criminal Record Centre
+              without anyone applying.
+            </p>
+          </div>
+          <div style={{ ...cardBase, padding: 22, borderLeft: `3px solid ${T.gold}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <FileClock size={16} color={T.gold} />
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: T.gold }}>s.5(2) &middot; APPLICATION</span>
+            </div>
+            <p style={{ fontSize: 14, color: T.ink, lineHeight: 1.6, margin: 0 }}>
+              Dealing convictions based on a legal presumption qualify too, but only through a
+              written application to the Director-General.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ value, label, source }) {
+  return (
+    <div style={{ ...cardBase, padding: "20px 18px" }}>
+      <div style={{ fontFamily: "'Lora', serif", fontSize: 28, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5, marginBottom: 8 }}>{label}</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: T.inkSoft, opacity: 0.8 }}>
+        {source}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   WHO WE ARE PAGE
+--------------------------------------------------------------- */
+function AboutPage() {
+  const pillars = [
+    {
+      title: "Policy advocacy",
+      body:
+        "We push for the state-led, automatic model the CPPA actually promises — rather than a system that quietly shifts the burden of proof back onto the people it's meant to help.",
+    },
+    {
+      title: "Technology platform",
+      body:
+        "We design the civic-tech infrastructure automatic expungement needs: government API integrations, eligibility screening, and accessible channels like USSD and WhatsApp for people without smartphones or data.",
+    },
+    {
+      title: "Public education",
+      body:
+        "We translate the law — statutes, parliamentary data, court judgments — into plain-language tools people can actually use to understand where they stand.",
+    },
+  ];
+
+  return (
+    <div className="cpp-shell cpp-rise" style={{ padding: "56px 24px 20px" }}>
+      <Eyebrow>WHO WE ARE</Eyebrow>
+      <h1
+        style={{
+          fontFamily: "'Lora', serif",
+          fontWeight: 600,
+          fontSize: "clamp(30px, 4.5vw, 40px)",
+          lineHeight: 1.15,
+          margin: "0 0 18px",
+          color: T.ink,
+          maxWidth: 680,
+        }}
+      >
+        Built to close the gap between the law and what actually happens
+      </h1>
+      <p style={{ color: T.inkSoft, fontSize: 16, maxWidth: 620, lineHeight: 1.65, margin: "0 0 40px" }}>
+        ClearPath Justice is a civic-tech initiative focused on cannabis record expungement under
+        South Africa's Cannabis for Private Purposes Act. The Act says most cannabis convictions
+        should be wiped automatically — no forms, no fees, no lawyer. Whether that promise is kept
+        depends on systems that don't yet exist. We're building the case, and the case management,
+        for making it real.
+      </p>
+
+      <div className="cpp-pillars" style={{ marginBottom: 44 }}>
+        {pillars.map((p) => (
+          <div key={p.title} style={{ ...cardBase, padding: 22 }}>
+            <h3 style={{ fontFamily: "'Lora', serif", fontSize: 17, fontWeight: 600, color: T.ink, margin: "0 0 10px" }}>
+              {p.title}
+            </h3>
+            <p style={{ fontSize: 13.5, color: T.inkSoft, lineHeight: 1.6, margin: 0 }}>{p.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...cardBase, padding: 28, background: "#FBF9F3", marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Lora', serif", fontSize: 20, fontWeight: 600, color: T.ink, margin: "0 0 12px" }}>
+          Why "automatic" is the whole argument
+        </h2>
+        <p style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.7, margin: "0 0 14px", maxWidth: 640 }}>
+          An application-based system asks people who were already failed once by the system —
+          often without money for a lawyer, or an internet connection, or even certainty about
+          which Act they were convicted under — to build their own case for relief. In practice,
+          that means the records most likely to sit unexpunged belong to the people least able to
+          navigate a bureaucratic process.
+        </p>
+        <p style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.7, margin: 0, maxWidth: 640 }}>
+          State-led, automatic expungement puts the burden where it belongs: on the Criminal
+          Record Centre that holds the record in the first place, not on the person who was
+          convicted for something that is no longer a crime.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   IMPACT PAGE
+--------------------------------------------------------------- */
+function ImpactPage({ setPage }) {
+  return (
+    <div className="cpp-shell cpp-rise" style={{ padding: "56px 24px 20px" }}>
+      <Eyebrow>THE COST OF A RECORD</Eyebrow>
+      <h1
+        style={{
+          fontFamily: "'Lora', serif",
+          fontWeight: 600,
+          fontSize: "clamp(30px, 4.5vw, 40px)",
+          lineHeight: 1.15,
+          margin: "0 0 18px",
+          color: T.ink,
+          maxWidth: 680,
+        }}
+      >
+        What a cannabis conviction still costs, years after it stopped being a crime
+      </h1>
+      <p style={{ color: T.inkSoft, fontSize: 16, maxWidth: 620, lineHeight: 1.65, margin: "0 0 40px" }}>
+        Private use and possession of cannabis stopped being a criminal offence in South Africa in
+        2018. The records from before then didn't disappear — they're still sitting in the
+        Criminal Record Centre, and still surfacing in background checks today.
+      </p>
+
+      {/* Scale */}
+      <ImpactSection
+        title="The scale of the problem"
+        citation="Constitutional Court papers, Prince v Minister of Justice and Constitutional Development"
+      >
+        <p style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.7, margin: "0 0 12px" }}>
+          Court papers filed in the case that led to decriminalisation showed that, on average,
+          around 250,000 people were arrested each year between 2013 and 2017 for cannabis-related
+          offences. Decades of enforcement before that means the number of South Africans who
+          currently carry a cannabis conviction on their record runs into the millions.
+        </p>
+      </ImpactSection>
+
+      {/* Employment barrier */}
+      <ImpactSection title="A criminal record in an already brutal job market" citation="Stats SA, Quarterly Labour Force Survey, Q1 2026">
+        <p style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.7, margin: "0 0 12px" }}>
+          South Africa's official unemployment rate reached 32.7% in the first quarter of 2026,
+          with youth unemployment at 45.8%. Background checks are now a standard part of hiring,
+          and a criminal record check doesn't distinguish between a violent offence and a
+          possession charge for conduct that's perfectly legal today. For work in finance,
+          childcare, security, or anywhere requiring a police clearance certificate, an unexpunged
+          cannabis conviction can quietly close doors the law no longer intends to close.
+        </p>
+      </ImpactSection>
+
+      {/* Why automatic matters */}
+      <ImpactSection title="Why the design of the process matters as much as the law itself">
+        <p style={{ fontSize: 14.5, color: T.ink, lineHeight: 1.7, margin: "0 0 12px" }}>
+          The CPPA doesn't just decriminalise cannabis — it draws a hard line between records that
+          must be cleared automatically and records that require a written application. That
+          distinction is where most of the practical risk sits. An application-based process
+          depends on people knowing their rights, finding the right form, and having the means to
+          submit it. History with South Africa's existing 10-year expungement process suggests
+          that burden falls hardest on exactly the people the CPPA is meant to help.
+        </p>
+      </ImpactSection>
+
+      {/* Current status */}
+      <div style={{ ...cardBase, padding: 26, background: T.goldSoft, borderLeft: `3px solid ${T.gold}`, marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Lora', serif", fontSize: 18, fontWeight: 600, color: T.ink, margin: "0 0 10px" }}>
+          Where things stand
+        </h2>
+        <p style={{ fontSize: 14, color: T.ink, lineHeight: 1.65, margin: "0 0 10px", maxWidth: 640 }}>
+          The CPPA was signed into law in May 2024, but it only takes effect on a date the
+          President still has to proclaim. Draft regulations covering the expungement process were
+          published for public comment in early 2026. Until the Act formally commences, automatic
+          expungement under section 5 can't begin.
+        </p>
+        <p style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.6, margin: 0 }}>
+          Check the Department of Justice and Constitutional Development's website for the latest
+          on commencement.
+        </p>
+      </div>
+
+      <button className="cpp-btn" style={{ background: T.ink, color: "#fff" }} onClick={() => setPage("checker")}>
+        See where your record would stand <ArrowRight size={14} />
+      </button>
+    </div>
+  );
+}
+
+function ImpactSection({ title, citation, children }) {
+  return (
+    <div style={{ marginBottom: 30 }}>
+      <h2 style={{ fontFamily: "'Lora', serif", fontSize: 19, fontWeight: 600, color: T.ink, margin: "0 0 10px" }}>
+        {title}
+      </h2>
+      {children}
+      {citation && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: T.inkSoft, opacity: 0.8 }}>
+          {citation}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   ELIGIBILITY CHECKER (from previous build)
+--------------------------------------------------------------- */
+const LEGAL_BASIS_OPTIONS = [
+  { id: "1971", label: "Abuse of Dependence-producing Substances Act (1971)", helper: "An older law, mostly used for convictions before the 1990s." },
+  { id: "1992", label: "Drugs and Drug Trafficking Act (1992)", helper: "The most common law cited in cannabis convictions in South Africa." },
+  { id: "homeland", label: "A former homeland law, before 1993", helper: "Transkei, Bophuthatswana, Ciskei, Venda, or another former self-governing territory." },
+  { id: "other", label: "A different law", helper: "For example, the Medicines Act or a municipal by-law. Section 5 doesn't name this law directly, so we can't classify it automatically." },
+  { id: "unsure", label: "I'm not sure", helper: "That's fine — it won't change your result." },
+];
+
+const OFFENCE_OPTIONS = [
+  { id: "possession", label: "Use or possession", helper: "You were found with cannabis, or using it — not selling or supplying it." },
+  { id: "presumption", label: "Dealing, based on a legal presumption", helper: "You were convicted of dealing because the law presumed intent to deal — for example, from the amount found — not because dealing was proven directly." },
+  { id: "proven", label: "Dealing, proven directly", helper: "The court had direct evidence that you sold or supplied cannabis." },
+  { id: "childdiversion", label: "A diversion order I received as a child", helper: "Not a conviction — a record from the Child Justice Act process for using, possessing, cultivating, or dealing in cannabis as a minor." },
+  { id: "unsure", label: "I'm not sure", helper: "We'll point you to where you can check your court record." },
+];
+
+function citationFor(offence, basis) {
+  const idx = { "1971": "i", "1992": "ii", homeland: "iii" }[basis] || null;
+  if (offence === "possession") return idx ? `s.5(1)(a)(${idx})` : "s.5(1)(a)";
+  if (offence === "presumption") return idx ? `s.5(2)(a)(${idx})` : "s.5(2)(a)";
+  if (offence === "childdiversion") return "s.5(2)(d)";
+  return null;
+}
+
+function resultFor(offence, basis) {
+  // A legal basis outside the Act's named laws can't be classified automatically,
+  // regardless of what the offence was — surface that uncertainty rather than guessing.
+  if (basis === "other" && (offence === "possession" || offence === "presumption")) {
+    return {
+      stampLabel: "NEEDS RECORD CHECK",
+      title: "We can't classify this automatically",
+      citation: null,
+      color: T.inkSoft,
+      soft: "#ECEAE3",
+      Icon: HelpCircle,
+      body: "Section 5 names specific laws — the 1971 Abuse of Dependence-producing Substances Act, the 1992 Drugs and Drug Trafficking Act, and pre-1993 homeland laws. A conviction under a different law (for example, the Medicines Act or a municipal by-law) isn't automatically covered, but that doesn't necessarily mean it's excluded either.",
+      next: "Bring your charge sheet or the law cited on your record to a community advice office, Legal Aid SA, or an attorney so they can confirm whether it falls within section 5 or another form of relief.",
+    };
+  }
+
+  if (offence === "possession") {
+    return {
+      stampLabel: "AUTOMATIC",
+      title: "Automatic expungement applies",
+      citation: citationFor(offence, basis),
+      color: T.teal,
+      soft: T.tealSoft,
+      Icon: FileCheck2,
+      body: "Convictions for use or possession of cannabis must be expunged automatically by the SAPS Criminal Record Centre — no application is required under section 5(1)(a).",
+      next: "If it hasn't been expunged yet, you can make a written application to the Director-General: Justice and Constitutional Development under section 5(1)(b), and a certificate of expungement will be issued.",
+    };
+  }
+  if (offence === "presumption") {
+    return {
+      stampLabel: "APPLICATION REQUIRED",
+      title: "You can apply for expungement",
+      citation: citationFor(offence, basis),
+      color: T.gold,
+      soft: T.goldSoft,
+      Icon: FileClock,
+      body: "Dealing convictions based on a legal presumption — rather than direct proof — qualify for expungement under section 5(2), but only once a written application is submitted.",
+      next: "Submit a written application to the Director-General. If satisfied that the conviction rested on a presumption of dealing, the Director-General will issue a certificate of expungement, which is then sent to the SAPS Criminal Record Centre.",
+      caution: "Note: if the Director-General later finds an applicant didn't qualify, the certificate can be revoked — but only after written notice and a 90-day opportunity to respond with reasons (s.5(4)–(5)).",
+    };
+  }
+  if (offence === "proven") {
+    return {
+      stampLabel: "NOT COVERED",
+      title: "This Act doesn't cover this conviction",
+      citation: null,
+      color: T.rust,
+      soft: T.rustSoft,
+      Icon: FileX,
+      body: "Section 5 only covers use or possession convictions, and dealing convictions based on a presumption. A dealing conviction proven with direct evidence falls outside its scope.",
+      next: "A community advice office or attorney can tell you whether any other relief applies to your record.",
+    };
+  }
+  if (offence === "childdiversion") {
+    return {
+      stampLabel: "APPLICATION REQUIRED",
+      title: "You can apply to have this record expunged",
+      citation: citationFor(offence, basis),
+      color: T.gold,
+      soft: T.goldSoft,
+      Icon: FileClock,
+      body: "A diversion record from being dealt with as a child under the Child Justice Act — for using, possessing, cultivating, or dealing in cannabis — can be expunged under section 5(2)(d). This is separate from the automatic and presumption pathways, and is not a criminal conviction.",
+      next: "This application goes to the Director-General: Social Development, not the Director-General: Justice and Constitutional Development. A community advice office or Legal Aid SA can help confirm the right office and form.",
+    };
+  }
+  return {
+    stampLabel: "UNCLEAR",
+    title: "We can't tell from this alone",
+    citation: null,
+    color: T.inkSoft,
+    soft: "#ECEAE3",
+    Icon: HelpCircle,
+    body: "Whether your conviction rested on a presumption of dealing usually has to be confirmed against the actual court record.",
+    next: "A community advice office, Legal Aid SA, or the SAPS Criminal Record Centre can check your record and tell you which part of section 5 applies.",
+  };
+}
+
+function RecordRow({ label, value }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 3, fontFamily: "'IBM Plex Mono', monospace" }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: value ? 600 : 400, color: value ? T.ink : T.inkSoft, fontStyle: value ? "normal" : "italic" }}>
+        {value || "pending"}
+      </div>
+    </div>
+  );
+}
+
+function ResultCertificate({ result, onRestart }) {
+  const { Icon } = result;
+  return (
+    <div className="cpp-rise" style={{ ...cardBase, padding: "36px 32px", position: "relative", overflow: "hidden" }}>
+      <div
+        className="cpp-stamp"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 8, border: `2px solid ${result.color}`,
+          color: result.color, borderRadius: 3, padding: "6px 14px", fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 12.5, fontWeight: 600, letterSpacing: "0.08em", transform: "rotate(-7deg)", marginBottom: 22,
+        }}
+      >
+        <Icon size={15} strokeWidth={2.2} />
+        {result.stampLabel}
+      </div>
+
+      <h2 style={{ fontFamily: "'Lora', serif", fontSize: 26, fontWeight: 600, margin: "0 0 8px", color: T.ink }}>
+        {result.title}
+      </h2>
+
+      {result.citation && (
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, color: result.color, marginBottom: 18 }}>
+          {result.citation}
+        </div>
+      )}
+
+      <p style={{ fontSize: 15, lineHeight: 1.65, color: T.ink, maxWidth: 620, margin: result.citation ? 0 : "0 0 18px" }}>
+        {result.body}
+      </p>
+
+      <div style={{ marginTop: 22, background: result.soft, borderRadius: 3, padding: "16px 18px", maxWidth: 620 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", color: result.color, marginBottom: 6 }}>
+          WHAT HAPPENS NEXT
+        </div>
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: T.ink, margin: 0 }}>{result.next}</p>
+      </div>
+
+      {result.caution && (
+        <div style={{ marginTop: 14, borderLeft: `2px solid ${T.paperLine}`, paddingLeft: 14, maxWidth: 620 }}>
+          <p style={{ fontSize: 12.5, lineHeight: 1.6, color: T.inkSoft, margin: 0, fontStyle: "italic" }}>
+            {result.caution}
+          </p>
+        </div>
+      )}
+
+      <button className="cpp-btn" style={{ marginTop: 26, background: T.ink, color: "#fff" }} onClick={onRestart}>
+        <RotateCcw size={14} /> Check another record
+      </button>
+    </div>
+  );
+}
+
+function CheckerPage() {
+  const [step, setStep] = useState(0);
+  const [legalBasis, setLegalBasis] = useState(null);
+  const [offence, setOffence] = useState(null);
+
+  const restart = () => {
+    setStep(0);
+    setLegalBasis(null);
+    setOffence(null);
+  };
+
+  const result = step === 2 ? resultFor(offence, legalBasis) : null;
+
+  return (
+    <div className="cpp-shell" style={{ padding: "56px 24px 20px" }}>
+      <Eyebrow>CANNABIS FOR PRIVATE PURPOSES ACT 7 OF 2024 &middot; SECTION 5</Eyebrow>
+      <h1 style={{ fontFamily: "'Lora', serif", fontWeight: 600, fontSize: "clamp(28px, 4vw, 38px)", lineHeight: 1.15, margin: "0 0 10px", color: T.ink }}>
+        Check your expungement status
+      </h1>
+      <p style={{ color: T.inkSoft, fontSize: 15, maxWidth: 560, lineHeight: 1.6, margin: "0 0 24px" }}>
+        Answer two questions about your conviction. We'll tell you which part of the law applies
+        to you — automatic, application-required, or not covered.
+      </p>
+
+      <div
+        style={{
+          ...cardBase,
+          background: T.goldSoft,
+          borderLeft: `3px solid ${T.gold}`,
+          padding: "14px 18px",
+          marginBottom: 32,
+          maxWidth: 620,
+        }}
+      >
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: T.ink, margin: 0 }}>
+          <strong>Section 5 has not yet commenced.</strong> The Act was signed in May 2024 but only
+          takes effect on a date the President still has to proclaim, and regulations are still in
+          draft. The result below shows what will apply once the Act is in force — it does not
+          mean automatic expungement is happening today.
+        </p>
+      </div>
+
+      {step < 2 && (
+        <div className="cpp-grid">
+          <div style={{ ...cardBase, padding: "28px 28px 24px" }} className="cpp-rise" key={step}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: T.inkSoft, marginBottom: 6 }}>
+              STEP {step + 1} OF 2
+            </div>
+            <h2 style={{ fontFamily: "'Lora', serif", fontSize: 21, fontWeight: 600, margin: "0 0 18px", color: T.ink }}>
+              {step === 0 ? "Which law were you convicted under?" : "What was the conviction for?"}
+            </h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(step === 0 ? LEGAL_BASIS_OPTIONS : OFFENCE_OPTIONS).map((opt) => (
+                <button
+                  key={opt.id}
+                  className="cpp-option"
+                  onClick={() => {
+                    if (step === 0) {
+                      setLegalBasis(opt.id);
+                      setStep(1);
+                    } else {
+                      setOffence(opt.id);
+                      setStep(2);
+                    }
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 14.5, color: T.ink, marginBottom: 3 }}>{opt.label}</div>
+                  <div style={{ fontSize: 13, color: T.inkSoft, lineHeight: 1.5 }}>{opt.helper}</div>
+                </button>
+              ))}
+            </div>
+
+            {step === 1 && (
+              <button
+                className="cpp-btn"
+                style={{ marginTop: 20, background: "transparent", color: T.inkSoft, border: `1px solid ${T.paperLine}` }}
+                onClick={() => setStep(0)}
+              >
+                <ArrowLeft size={14} /> Back
+              </button>
+            )}
+          </div>
+
+          <div style={{ ...cardBase, borderStyle: "dashed", padding: "24px 24px", background: "#FBF9F3" }}>
+            <div
+              style={{
+                fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: "0.08em",
+                color: T.inkSoft, marginBottom: 16, borderBottom: `1px solid ${T.paperLine}`, paddingBottom: 10,
+              }}
+            >
+              CASE RECORD
+            </div>
+            <RecordRow label="Legal basis" value={legalBasis ? LEGAL_BASIS_OPTIONS.find((o) => o.id === legalBasis)?.label : null} />
+            <RecordRow label="Nature of offence" value={offence ? OFFENCE_OPTIONS.find((o) => o.id === offence)?.label : null} />
+          </div>
+        </div>
+      )}
+
+      {step === 2 && result && <ResultCertificate result={result} onRestart={restart} />}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------
+   APP SHELL
+--------------------------------------------------------------- */
+export default function ClearPathSite() {
+  const [page, setPage] = useState("home");
+
+  return (
+    <div style={{ minHeight: "100vh", background: T.paper, color: T.ink, fontFamily: "'IBM Plex Sans', sans-serif" }}>
+      <GlobalStyle />
+      <NavBar page={page} setPage={setPage} />
+      {page === "home" && <HomePage setPage={setPage} />}
+      {page === "about" && <AboutPage />}
+      {page === "impact" && <ImpactPage setPage={setPage} />}
+      {page === "checker" && <CheckerPage />}
+      <Footer />
+    </div>
+  );
+}
