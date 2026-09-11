@@ -1,0 +1,177 @@
+name: Build ClearPath Justice APK
+
+on:
+  push:
+    branches:
+      - android-apk-setup
+      - android-apk
+      - main
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build Android APK
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Build production web assets (Vite)
+        run: npm run build
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Verify dist directory
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+            echo "Error: dist directory is empty"
+            exit 1
+          fi
+          echo "✓ dist directory ready"
+          du -sh dist/
+
+      - name: Add Android platform
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            echo "✓ Android platform already exists"
+          fi
+
+      - name: Sync Capacitor Android platform
+        run: npx cap sync android --deployment
+
+      - name: Make Gradle executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android Debug APK
+        if: github.event.inputs.build_type != 'release' || github.event_name == 'push'
+        run: |
+          cd android
+          ./gradlew clean assembleDebug --stacktrace
+          cd ..
+
+      - name: Build Android Release APK
+        if: github.event.inputs.build_type == 'release'
+        run: |
+          cd android
+          ./gradlew clean assembleRelease --stacktrace
+          cd ..
+
+      - name: Verify APK creation
+        run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          RELEASE_APK="android/app/build/outputs/apk/release/app-release.apk"
+          
+          if [ -f "$APK_PATH" ]; then
+            echo "✓ Debug APK built successfully"
+            du -h "$APK_PATH"
+          elif [ -f "$RELEASE_APK" ]; then
+            echo "✓ Release APK built successfully"
+            du -h "$RELEASE_APK"
+          else
+            echo "✗ APK not found"
+            exit 1
+          fi
+
+      - name: Rename APK for release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          BUILD_DATE=$(date +%Y%m%d_%H%M%S)
+          
+          if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+            cp "android/app/build/outputs/apk/debug/app-debug.apk" "ClearPath-Justice-v${VERSION}-debug-${BUILD_DATE}.apk"
+          fi
+          
+          if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+            cp "android/app/build/outputs/apk/release/app-release.apk" "ClearPath-Justice-v${VERSION}-release-${BUILD_DATE}.apk"
+          fi
+          
+          ls -lh ClearPath-Justice-*.apk 2>/dev/null || echo "No renamed APKs found"
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clearpath-justice-apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release.apk
+            ClearPath-Justice-*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.event.inputs.build_type == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ClearPath-Justice-*.apk
+          tag_name: v${{ github.run_number }}
+          body: |
+            # ClearPath Justice APK Release
+            
+            **Version**: ${{ github.run_number }}
+            **Branch**: ${{ github.ref }}
+            **Build Date**: ${{ github.event.head_commit.timestamp }}
+            
+            ## Download APK
+            
+            The APK files are attached below. Install on your Android device:
+            
+            ```bash
+            adb install ClearPath-Justice-*.apk
+            ```
+            
+            ## Installation Instructions
+            
+            1. Download the APK file
+            2. Enable "Unknown Sources" in Settings > Security
+            3. Open the APK file to install
+            4. Launch "ClearPath Justice" from your app drawer
+
+      - name: Create build summary
+        if: always()
+        run: |
+          echo "# Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Type**: ${{ github.event.inputs.build_type || 'debug' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+            SIZE=$(du -h android/app/build/outputs/apk/debug/app-debug.apk | cut -f1)
+            echo "**Debug APK**: ✓ Built ($SIZE)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Debug APK**: ✗ Not built" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+            SIZE=$(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)
+            echo "**Release APK**: ✓ Built ($SIZE)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Release APK**: ✗ Not built" >> $GITHUB_STEP_SUMMARY
+          fi

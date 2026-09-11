@@ -1,0 +1,63 @@
+{
+  "name": "clearpath-justice",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ClearPath Justice - Civic-tech web application for cannabis conviction expungement eligibility in South Africa",
+  "keywords": [
+    "criminal-justice",
+    "expungement",
+    "South Africa",
+    "CPPA",
+    "cannabis",
+    "accessibility",
+    "civic-tech"
+  ],
+  "author": "Marvin Adams <marvin@clearpathjustice.org.za>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:android": "npm run build && npx cap sync android --deployment",
+    "apk:debug": "cd android && ./gradlew assembleDebug --stacktrace",
+    "apk:release": "cd android && ./gradlew assembleRelease --stacktrace",
+    "apk:build": "npm run build:android && npm run apk:debug",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "lint": "echo \"Add linting tools as needed\"",
+    "test": "echo \"Add testing tools as needed\""
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.4.9"
+  },
+  "capacitor": {
+    "appId": "org.clearpath.justice",
+    "appName": "ClearPath Justice",
+    "webDir": "dist",
+    "server": {
+      "androidScheme": "https"
+    },
+    "plugins": {
+      "SplashScreen": {
+        "launchShowDuration": 3000,
+        "backgroundColor": "#1a3a52"
+      }
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
